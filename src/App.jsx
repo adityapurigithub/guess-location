@@ -68,7 +68,7 @@ const App = () => {
     const templateParams = {
       user_name: userName || "Unknown",
       date: new Date().toLocaleString(),
-      coords: `Latitude: ${coords.lat}, Longitude: ${coords.lng}`,
+      coords: `Latitude: ${coords.lat}, Longitude: ${coords.lng}, Accuracy: ±${coords.accuracy} meters`,
     };
 
     const alreadySent = sessionStorage.getItem("email_sent");
@@ -121,20 +121,34 @@ const App = () => {
       }
     }
 
-    navigator.geolocation.getCurrentPosition(
+    // ✅ Start watching position
+    const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        setCoords({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
+        const { latitude, longitude, accuracy } = position.coords;
+
+        setCoords({ lat: latitude, lng: longitude, accuracy });
         setPermissionState("granted");
+
+        console.log(
+          "New location:",
+          latitude,
+          longitude,
+          "Accuracy:",
+          accuracy
+        );
+
+        // ✅ Stop watching once accuracy is good enough (<30m)
+        if (accuracy && accuracy <= 30) {
+          navigator.geolocation.clearWatch(watchId);
+          console.log("Stopped watching - good accuracy achieved.");
+        }
       },
       (error) => {
         console.warn("Location error:", error.message);
         setPermissionState("denied");
         setCoords(null);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
     );
   };
 
